@@ -1,0 +1,20 @@
+{
+  "name": "nullamix.github.io",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "disable-telemetry": "astro telemetry disable",
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/rss": "^4.0.18",
+    "astro": "^5.0.0",
+    "typescript": "^5.6.0"
+  }
+}

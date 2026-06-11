@@ -1,0 +1,33 @@
+---
+interface Props {
+  post: {
+    slug: string;
+    data: {
+      title: string;
+      description: string;
+      pubDate: Date;
+      tags: string[];
+    };
+  };
+}
+
+const { post } = Astro.props;
+const date = post.data.pubDate.toLocaleDateString('en', {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric'
+});
+---
+<article class="post-card">
+  <div class="post-meta">
+    <time datetime={post.data.pubDate.toISOString()}>{date}</time>
+    <span class="tags" aria-label="Tags">
+      {post.data.tags.map((tag) => <span class="tag">#{tag}</span>)}
+    </span>
+  </div>
+  <div class="post-summary">
+    <h3><a href={`/blog/${post.slug}/`}>{post.data.title}</a></h3>
+    <p>{post.data.description}</p>
+  </div>
+  <span class="post-arrow" aria-hidden="true">→</span>
+</article>

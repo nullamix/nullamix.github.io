@@ -1,0 +1,93 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  canonicalPath?: string;
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  updatedTime?: Date;
+}
+
+import '../styles/global.css';
+
+const siteName = 'nullamix';
+const defaultDescription = 'DevOps notes from AmirHossein: Linux, containers, CI/CD, security, observability, and production engineering.';
+const {
+  title = siteName,
+  description = defaultDescription,
+  canonicalPath = Astro.url.pathname,
+  type = 'website',
+  publishedTime,
+  updatedTime
+} = Astro.props;
+const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
+const canonical = new URL(canonicalPath, Astro.site ?? 'https://nullamix.github.io').toString();
+const path = Astro.url.pathname;
+const structuredData = type === 'article'
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: title,
+      description,
+      datePublished: publishedTime?.toISOString(),
+      dateModified: (updatedTime ?? publishedTime)?.toISOString(),
+      mainEntityOfPage: canonical,
+      author: {
+        '@type': 'Person',
+        name: 'AmirHossein',
+        url: 'https://github.com/nullamix'
+      },
+      publisher: {
+        '@type': 'Person',
+        name: 'AmirHossein'
+      }
+    }
+  : undefined;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title="nullamix RSS" href="/rss.xml" />
+    <meta property="og:type" content={type} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+    {updatedTime && <meta property="article:modified_time" content={updatedTime.toISOString()} />}
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    {structuredData && <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
+    <title>{pageTitle}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="site-header">
+      <nav class="nav" aria-label="Main navigation">
+        <a class="brand" href="/" aria-label="nullamix home">
+          <img src="/favicon.svg" width="28" height="28" alt="" />
+          <span>nullamix</span>
+        </a>
+        <div class="nav-links">
+          <a href="/blog/" aria-current={path.startsWith('/blog/') ? 'page' : undefined}>Notes</a>
+          <a href="/about/" aria-current={path === '/about/' ? 'page' : undefined}>About</a>
+          <a href="https://github.com/nullamix" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        </div>
+      </nav>
+    </header>
+    <main id="content">
+      <slot />
+    </main>
+    <footer class="footer">
+      <p><span class="status-dot" aria-hidden="true"></span> status: documenting</p>
+      <p><a href="/rss.xml">RSS</a> · Field notes by AmirHossein.</p>
+    </footer>
+  </body>
+</html>
