@@ -1,0 +1,936 @@
+<div class="infrastructure-scene" aria-hidden="true">
+  <canvas data-infrastructure-scene></canvas>
+</div>
+
+<script>
+  type NodeKind =
+    | 'linux'
+    | 'git'
+    | 'runner'
+    | 'security'
+    | 'registry'
+    | 'container'
+    | 'internet'
+    | 'gateway'
+    | 'edge'
+    | 'mesh'
+    | 'cluster'
+    | 'cache'
+    | 'search'
+    | 'storage'
+    | 'observe';
+
+  interface InfraNode {
+    id: string;
+    label: string;
+    detail: string;
+    kind: NodeKind;
+    x: number;
+    y: number;
+    px: number;
+    py: number;
+    active: number;
+    desktopOnly?: boolean;
+    userX?: number;
+    userY?: number;
+  }
+
+  interface Route {
+    from: string;
+    to: string;
+    color: 'green' | 'warm' | 'security';
+    speed: number;
+    phase: number;
+    bidirectional?: boolean;
+  }
+
+  interface Packet {
+    route: Route;
+    progress: number;
+    speed: number;
+    size: number;
+    burst: boolean;
+    direction: 1 | -1;
+  }
+
+  const canvasElement = document.querySelector<HTMLCanvasElement>('[data-infrastructure-scene]');
+  const drawingContext = canvasElement?.getContext('2d');
+
+  if (canvasElement && drawingContext) {
+    const canvas: HTMLCanvasElement = canvasElement;
+    const context: CanvasRenderingContext2D = drawingContext;
+    const nodes: InfraNode[] = [
+      { id: 'linux', label: 'LINUX', detail: 'dev host', kind: 'linux', x: 0.05, y: 0.17, px: 0, py: 0, active: 0 },
+      { id: 'gitlab', label: 'GITLAB', detail: 'source', kind: 'git', x: 0.19, y: 0.1, px: 0, py: 0, active: 0 },
+      { id: 'pipeline', label: 'GITLAB CI', detail: 'docker build', kind: 'runner', x: 0.34, y: 0.21, px: 0, py: 0, active: 0 },
+      { id: 'security', label: 'SEC GATE', detail: 'SAST · Trivy', kind: 'security', x: 0.49, y: 0.1, px: 0, py: 0, active: 0 },
+      { id: 'registry', label: 'REGISTRY', detail: 'image · pkg', kind: 'registry', x: 0.65, y: 0.22, px: 0, py: 0, active: 0 },
+      { id: 'docker', label: 'DOCKER DEV', detail: 'team deploy', kind: 'container', x: 0.82, y: 0.15, px: 0, py: 0, active: 0 },
+      { id: 'internet', label: 'INTERNET', detail: 'users · APIs', kind: 'internet', x: 0.05, y: 0.58, px: 0, py: 0, active: 0 },
+      { id: 'nginx', label: 'NGINX', detail: 'L7 balance', kind: 'gateway', x: 0.2, y: 0.51, px: 0, py: 0, active: 0 },
+      { id: 'edge1', label: 'EDGE-01', detail: 'proxy node', kind: 'edge', x: 0.35, y: 0.36, px: 0, py: 0, active: 0 },
+      { id: 'edge2', label: 'EDGE-02', detail: 'proxy node', kind: 'edge', x: 0.35, y: 0.54, px: 0, py: 0, active: 0, desktopOnly: true },
+      { id: 'edge3', label: 'EDGE-03', detail: 'proxy node', kind: 'edge', x: 0.35, y: 0.72, px: 0, py: 0, active: 0, desktopOnly: true },
+      { id: 'mesh', label: 'SVC MESH', detail: 'mTLS · traffic', kind: 'mesh', x: 0.5, y: 0.53, px: 0, py: 0, active: 0 },
+      { id: 'k8s', label: 'KUBERNETES', detail: 'production', kind: 'cluster', x: 0.65, y: 0.52, px: 0, py: 0, active: 0 },
+      { id: 'observe', label: 'MONITOR', detail: 'logs · metrics', kind: 'observe', x: 0.81, y: 0.34, px: 0, py: 0, active: 0 },
+      { id: 'redis', label: 'REDIS', detail: 'cache', kind: 'cache', x: 0.78, y: 0.76, px: 0, py: 0, active: 0 },
+      { id: 'elastic', label: 'ELASTIC', detail: 'search · logs', kind: 'search', x: 0.93, y: 0.56, px: 0, py: 0, active: 0 },
+      { id: 'minio', label: 'MINIO', detail: 'object storage', kind: 'storage', x: 0.92, y: 0.82, px: 0, py: 0, active: 0 }
+    ];
+
+    const routes: Route[] = [
+      { from: 'linux', to: 'gitlab', color: 'warm', speed: 0.06, phase: 0.1 },
+      { from: 'gitlab', to: 'pipeline', color: 'warm', speed: 0.052, phase: 0.55 },
+      { from: 'pipeline', to: 'security', color: 'security', speed: 0.045, phase: 0.25 },
+      { from: 'security', to: 'registry', color: 'warm', speed: 0.046, phase: 0.75 },
+      { from: 'registry', to: 'docker', color: 'warm', speed: 0.048, phase: 0.35 },
+      { from: 'registry', to: 'k8s', color: 'warm', speed: 0.04, phase: 0.8 },
+      { from: 'internet', to: 'nginx', color: 'green', speed: 0.075, phase: 0.2, bidirectional: true },
+      { from: 'nginx', to: 'edge1', color: 'green', speed: 0.07, phase: 0.65, bidirectional: true },
+      { from: 'nginx', to: 'edge2', color: 'green', speed: 0.068, phase: 0.28, bidirectional: true },
+      { from: 'nginx', to: 'edge3', color: 'green', speed: 0.066, phase: 0.48, bidirectional: true },
+      { from: 'edge1', to: 'mesh', color: 'green', speed: 0.064, phase: 0.4, bidirectional: true },
+      { from: 'edge2', to: 'mesh', color: 'green', speed: 0.062, phase: 0.78, bidirectional: true },
+      { from: 'edge3', to: 'mesh', color: 'green', speed: 0.06, phase: 0.2, bidirectional: true },
+      { from: 'mesh', to: 'k8s', color: 'green', speed: 0.06, phase: 0.16, bidirectional: true },
+      { from: 'k8s', to: 'redis', color: 'green', speed: 0.07, phase: 0.05, bidirectional: true },
+      { from: 'k8s', to: 'elastic', color: 'green', speed: 0.048, phase: 0.4, bidirectional: true },
+      { from: 'k8s', to: 'minio', color: 'green', speed: 0.038, phase: 0.25, bidirectional: true },
+      { from: 'k8s', to: 'observe', color: 'green', speed: 0.052, phase: 0.7 },
+      { from: 'nginx', to: 'observe', color: 'green', speed: 0.04, phase: 0.35 },
+      { from: 'elastic', to: 'observe', color: 'green', speed: 0.045, phase: 0.6 },
+      { from: 'elastic', to: 'minio', color: 'green', speed: 0.032, phase: 0.52 }
+    ];
+
+    const packets: Packet[] = routes.flatMap((route, index) => {
+      const request: Packet = {
+        route,
+        progress: route.phase,
+        speed: route.speed,
+        size: index % 3 === 0 ? 2.5 : 2,
+        burst: false,
+        direction: 1
+      };
+
+      if (!route.bidirectional) return [request];
+
+      return [
+        request,
+        {
+          route,
+          progress: 1 - route.phase,
+          speed: route.speed * 0.84,
+          size: 2,
+          burst: false,
+          direction: -1
+        }
+      ];
+    });
+
+    const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const pointer = { x: -1000, y: -1000, dx: 0, dy: 0 };
+    let dragState: {
+      node: InfraNode;
+      offsetX: number;
+      offsetY: number;
+      startX: number;
+      startY: number;
+      moved: boolean;
+    } | undefined;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let animationFrame = 0;
+    let lastTime = performance.now();
+    let visible = !document.hidden;
+    let podCount = 3;
+
+    try {
+      const storedPodCount = Number(sessionStorage.getItem('nullamix:k8s-pods'));
+      if (Number.isInteger(storedPodCount) && storedPodCount >= 1 && storedPodCount <= 6) {
+        podCount = storedPodCount;
+      }
+    } catch {
+      // Session storage is optional; the control still works without persistence.
+    }
+
+    const palette = {
+      background: '#0d0f0e',
+      surface: '#141715',
+      panel: '#1a1e1b',
+      border: '#394039',
+      line: 'rgba(120, 134, 121, 0.2)',
+      text: '#b8beb6',
+      muted: '#70786f',
+      green: '#a8d672',
+      warm: '#e1aa63',
+      security: '#d8847d',
+      response: '#7db8c5'
+    };
+
+    const compactPositions: Record<string, [number, number]> = {
+      linux: [0.12, 0.12],
+      gitlab: [0.45, 0.12],
+      pipeline: [0.79, 0.16],
+      security: [0.18, 0.32],
+      registry: [0.54, 0.31],
+      docker: [0.84, 0.31],
+      internet: [0.12, 0.51],
+      nginx: [0.45, 0.51],
+      edge1: [0.79, 0.49],
+      mesh: [0.18, 0.71],
+      k8s: [0.5, 0.71],
+      observe: [0.12, 0.88],
+      redis: [0.2, 0.87],
+      elastic: [0.52, 0.84],
+      minio: [0.78, 0.95]
+    };
+
+    function isNodeVisible(node: InfraNode) {
+      return !(width < 720 && node.desktopOnly);
+    }
+
+    function isRouteVisible(route: Route) {
+      return isNodeVisible(nodeById.get(route.from)!) && isNodeVisible(nodeById.get(route.to)!);
+    }
+
+    function nodeSize(node: InfraNode) {
+      const mobile = width < 720;
+      if (node.kind === 'cluster') {
+        return { width: mobile ? 100 : 142, height: mobile ? 78 : 94 };
+      }
+      if (node.kind === 'storage') {
+        return { width: mobile ? 116 : 174, height: mobile ? 88 : 112 };
+      }
+      if (node.kind === 'internet') {
+        return { width: mobile ? 90 : 116, height: mobile ? 48 : 56 };
+      }
+      return { width: mobile ? 82 : 106, height: mobile ? 43 : 48 };
+    }
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const compact = width < 720;
+      for (const node of nodes) {
+        const size = nodeSize(node);
+        const horizontalMargin = size.width / 2 + 5;
+        const verticalMargin = size.height / 2 + 5;
+        const position = compact ? compactPositions[node.id] : undefined;
+        const x = (node.userX ?? position?.[0] ?? node.x) * width;
+        const y = (node.userY ?? position?.[1] ?? node.y) * height;
+        node.px = Math.max(horizontalMargin, Math.min(width - horizontalMargin, x));
+        node.py = Math.max(verticalMargin, Math.min(height - verticalMargin, y));
+      }
+
+      draw(performance.now(), 0);
+    }
+
+    function roundedRect(x: number, y: number, w: number, h: number, radius: number) {
+      const r = Math.min(radius, w / 2, h / 2);
+      context.beginPath();
+      context.moveTo(x + r, y);
+      context.arcTo(x + w, y, x + w, y + h, r);
+      context.arcTo(x + w, y + h, x, y + h, r);
+      context.arcTo(x, y + h, x, y, r);
+      context.arcTo(x, y, x + w, y, r);
+      context.closePath();
+    }
+
+    function drawGrid() {
+      const gap = width < 720 ? 42 : 56;
+      const offsetX = (pointer.dx * 4) % gap;
+      const offsetY = (pointer.dy * 4) % gap;
+
+      context.save();
+      context.strokeStyle = 'rgba(78, 88, 79, 0.09)';
+      context.lineWidth = 1;
+
+      for (let x = offsetX; x < width; x += gap) {
+        context.beginPath();
+        context.moveTo(x, 0);
+        context.lineTo(x, height);
+        context.stroke();
+      }
+
+      for (let y = offsetY; y < height; y += gap) {
+        context.beginPath();
+        context.moveTo(0, y);
+        context.lineTo(width, y);
+        context.stroke();
+      }
+      context.restore();
+    }
+
+    function routePoint(route: Route, progress: number) {
+      const from = nodeById.get(route.from)!;
+      const to = nodeById.get(route.to)!;
+      const bend = Math.min(70, Math.abs(to.px - from.px) * 0.22);
+      const controlX = (from.px + to.px) / 2;
+      const controlY = (from.py + to.py) / 2 + (from.py <= to.py ? bend : -bend);
+      const inverse = 1 - progress;
+
+      return {
+        x: inverse * inverse * from.px + 2 * inverse * progress * controlX + progress * progress * to.px,
+        y: inverse * inverse * from.py + 2 * inverse * progress * controlY + progress * progress * to.py
+      };
+    }
+
+    function drawRoutes() {
+      context.save();
+      context.lineWidth = 1;
+      context.setLineDash([4, 7]);
+
+      for (const route of routes) {
+        if (!isRouteVisible(route)) continue;
+        const from = nodeById.get(route.from)!;
+        const to = nodeById.get(route.to)!;
+        const bend = Math.min(70, Math.abs(to.px - from.px) * 0.22);
+        const controlX = (from.px + to.px) / 2;
+        const controlY = (from.py + to.py) / 2 + (from.py <= to.py ? bend : -bend);
+
+        context.strokeStyle = palette.line;
+        context.beginPath();
+        context.moveTo(from.px, from.py);
+        context.quadraticCurveTo(controlX, controlY, to.px, to.py);
+        context.stroke();
+      }
+
+      context.restore();
+    }
+
+    function drawPackets(delta: number) {
+      context.save();
+
+      for (let index = packets.length - 1; index >= 0; index -= 1) {
+        const packet = packets[index];
+        if (!isRouteVisible(packet.route)) continue;
+        if (!reduceMotion) {
+          packet.progress += packet.speed * delta * packet.direction;
+        }
+
+        if (packet.progress > 1) {
+          if (packet.burst) {
+            packets.splice(index, 1);
+            continue;
+          }
+          packet.progress %= 1;
+        }
+
+        if (packet.progress < 0) {
+          if (packet.burst) {
+            packets.splice(index, 1);
+            continue;
+          }
+          packet.progress = 1 + (packet.progress % 1);
+        }
+
+        const point = routePoint(packet.route, packet.progress);
+        const color = packet.direction === -1
+          ? palette.response
+          : packet.route.color === 'warm'
+            ? palette.warm
+            : packet.route.color === 'security'
+              ? palette.security
+              : palette.green;
+
+        context.shadowColor = color;
+        context.shadowBlur = packet.burst ? 12 : 8;
+        context.fillStyle = color;
+        context.beginPath();
+        if (packet.direction === -1) {
+          context.moveTo(point.x, point.y - packet.size * 1.7);
+          context.lineTo(point.x + packet.size * 1.7, point.y);
+          context.lineTo(point.x, point.y + packet.size * 1.7);
+          context.lineTo(point.x - packet.size * 1.7, point.y);
+          context.closePath();
+        } else {
+          context.arc(point.x, point.y, packet.size, 0, Math.PI * 2);
+        }
+        context.fill();
+
+        context.globalAlpha = 0.18;
+        context.beginPath();
+        context.arc(point.x, point.y, packet.size + 5, 0, Math.PI * 2);
+        context.fill();
+        context.globalAlpha = 1;
+      }
+
+      context.restore();
+    }
+
+    function drawIcon(node: InfraNode, x: number, y: number, color: string) {
+      context.save();
+      context.strokeStyle = color;
+      context.fillStyle = color;
+      context.lineWidth = 1.2;
+
+      if (node.kind === 'cache' || node.kind === 'search') {
+        context.beginPath();
+        context.ellipse(x, y - 5, 9, 3.5, 0, 0, Math.PI * 2);
+        context.stroke();
+        context.beginPath();
+        context.moveTo(x - 9, y - 5);
+        context.lineTo(x - 9, y + 6);
+        context.ellipse(x, y + 6, 9, 3.5, 0, Math.PI, 0, true);
+        context.lineTo(x + 9, y - 5);
+        context.stroke();
+      } else if (node.kind === 'cluster') {
+        context.beginPath();
+        for (let index = 0; index < 6; index += 1) {
+          const angle = Math.PI / 3 * index - Math.PI / 2;
+          const px = x + Math.cos(angle) * 10;
+          const py = y + Math.sin(angle) * 10;
+          if (index === 0) context.moveTo(px, py);
+          else context.lineTo(px, py);
+        }
+        context.closePath();
+        context.stroke();
+        for (const angle of [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6]) {
+          context.beginPath();
+          context.arc(x + Math.cos(angle) * 5, y + Math.sin(angle) * 5, 1.7, 0, Math.PI * 2);
+          context.fill();
+        }
+      } else if (node.kind === 'gateway') {
+        context.strokeRect(x - 9, y - 7, 18, 14);
+        context.beginPath();
+        context.moveTo(x - 5, y);
+        context.lineTo(x + 5, y);
+        context.moveTo(x + 2, y - 3);
+        context.lineTo(x + 5, y);
+        context.lineTo(x + 2, y + 3);
+        context.stroke();
+      } else if (node.kind === 'edge') {
+        for (let index = -1; index <= 1; index += 1) {
+          context.strokeRect(x - 10, y + index * 6 - 2, 20, 5);
+          context.beginPath();
+          context.arc(x + 6, y + index * 6 + 0.5, 1, 0, Math.PI * 2);
+          context.fill();
+        }
+      } else if (node.kind === 'mesh') {
+        const points = [
+          [x, y - 9],
+          [x + 9, y],
+          [x, y + 9],
+          [x - 9, y]
+        ];
+        context.beginPath();
+        for (const [fromX, fromY] of points) {
+          for (const [toX, toY] of points) {
+            context.moveTo(fromX, fromY);
+            context.lineTo(toX, toY);
+          }
+        }
+        context.stroke();
+        for (const [pointX, pointY] of points) {
+          context.beginPath();
+          context.arc(pointX, pointY, 2.2, 0, Math.PI * 2);
+          context.fill();
+        }
+      } else if (node.kind === 'observe') {
+        context.beginPath();
+        context.moveTo(x - 10, y + 3);
+        context.lineTo(x - 5, y + 3);
+        context.lineTo(x - 2, y - 6);
+        context.lineTo(x + 2, y + 7);
+        context.lineTo(x + 5, y);
+        context.lineTo(x + 10, y);
+        context.stroke();
+      } else if (node.kind === 'git') {
+        context.beginPath();
+        context.moveTo(x - 6, y - 6);
+        context.lineTo(x + 6, y + 6);
+        context.moveTo(x - 6, y - 6);
+        context.lineTo(x - 6, y + 6);
+        context.stroke();
+        for (const [cx, cy] of [[x - 6, y - 6], [x - 6, y + 6], [x + 6, y + 6]]) {
+          context.beginPath();
+          context.arc(cx, cy, 2.2, 0, Math.PI * 2);
+          context.fill();
+        }
+      } else if (node.kind === 'linux') {
+        context.strokeRect(x - 10, y - 7, 20, 14);
+        context.beginPath();
+        context.moveTo(x - 6, y - 2);
+        context.lineTo(x - 2, y + 1);
+        context.lineTo(x - 6, y + 4);
+        context.moveTo(x, y + 4);
+        context.lineTo(x + 6, y + 4);
+        context.stroke();
+      } else if (node.kind === 'security') {
+        context.beginPath();
+        context.moveTo(x, y - 10);
+        context.lineTo(x + 8, y - 6);
+        context.lineTo(x + 7, y + 3);
+        context.quadraticCurveTo(x, y + 10, x, y + 10);
+        context.quadraticCurveTo(x - 7, y + 3, x - 7, y + 3);
+        context.lineTo(x - 8, y - 6);
+        context.closePath();
+        context.stroke();
+        context.beginPath();
+        context.moveTo(x - 3, y);
+        context.lineTo(x - 1, y + 3);
+        context.lineTo(x + 4, y - 3);
+        context.stroke();
+      } else if (node.kind === 'internet') {
+        context.beginPath();
+        context.arc(x - 5, y + 1, 5, Math.PI * 0.7, Math.PI * 1.8);
+        context.arc(x, y - 4, 6, Math.PI, Math.PI * 1.9);
+        context.arc(x + 7, y, 5, Math.PI * 1.2, Math.PI * 0.2);
+        context.lineTo(x - 7, y + 5);
+        context.closePath();
+        context.stroke();
+        for (const clientX of [x - 8, x, x + 8]) {
+          context.beginPath();
+          context.arc(clientX, y + 10, 1.7, 0, Math.PI * 2);
+          context.fill();
+        }
+      } else if (node.kind === 'runner') {
+        context.strokeRect(x - 10, y - 7, 20, 14);
+        context.beginPath();
+        context.moveTo(x - 3, y - 4);
+        context.lineTo(x + 5, y);
+        context.lineTo(x - 3, y + 4);
+        context.closePath();
+        context.fill();
+      } else if (node.kind === 'container') {
+        context.strokeRect(x - 10, y - 7, 20, 14);
+        for (let row = 0; row < 2; row += 1) {
+          for (let column = 0; column < 3; column += 1) {
+            context.strokeRect(x - 7 + column * 5, y - 4 + row * 5, 3, 3);
+          }
+        }
+      } else if (node.kind === 'registry') {
+        for (let index = -1; index <= 1; index += 1) {
+          context.strokeRect(x - 10, y + index * 6 - 2, 20, 5);
+        }
+      } else {
+        context.beginPath();
+        context.arc(x, y, 9, 0, Math.PI * 2);
+        context.stroke();
+        context.beginPath();
+        context.arc(x, y, 2, 0, Math.PI * 2);
+        context.fill();
+      }
+
+      context.restore();
+    }
+
+    function clusterControlCenters(node: InfraNode) {
+      const size = nodeSize(node);
+      const y = node.py - size.height / 2 + 14;
+      return {
+        minus: { x: node.px + size.width / 2 - 32, y },
+        plus: { x: node.px + size.width / 2 - 12, y }
+      };
+    }
+
+    function drawKubernetesNode(node: InfraNode, size: { width: number; height: number }, accent: string) {
+      const mobile = width < 720;
+      const top = node.py - size.height / 2;
+      const left = node.px - size.width / 2;
+      const controls = clusterControlCenters(node);
+
+      drawIcon(node, left + 17, top + 15, accent);
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+      context.font = `${mobile ? 8 : 9}px "SFMono-Regular", Consolas, monospace`;
+      context.fillStyle = palette.text;
+      context.fillText(mobile ? 'K8S' : node.label, left + 34, top + 12);
+      context.font = `${mobile ? 7 : 8}px "SFMono-Regular", Consolas, monospace`;
+      context.fillStyle = palette.muted;
+      context.fillText(`PROD · ${podCount} pods`, left + 34, top + 24);
+
+      context.strokeStyle = palette.border;
+      context.beginPath();
+      context.moveTo(left + 8, top + 34);
+      context.lineTo(left + size.width - 8, top + 34);
+      context.stroke();
+
+      for (const [symbol, point] of [['-', controls.minus], ['+', controls.plus]] as const) {
+        roundedRect(point.x - 7, point.y - 7, 14, 14, 3);
+        context.fillStyle = palette.panel;
+        context.fill();
+        context.strokeStyle = palette.border;
+        context.stroke();
+        context.fillStyle = accent;
+        context.textAlign = 'center';
+        context.font = '10px "SFMono-Regular", Consolas, monospace';
+        context.fillText(symbol, point.x, point.y + 0.5);
+      }
+
+      const columns = 3;
+      const podWidth = mobile ? 19 : 27;
+      const podHeight = mobile ? 12 : 15;
+      const gapX = mobile ? 7 : 9;
+      const gapY = mobile ? 6 : 7;
+      const totalWidth = columns * podWidth + (columns - 1) * gapX;
+      const startX = node.px - totalWidth / 2;
+      const startY = top + (mobile ? 43 : 45);
+
+      for (let index = 0; index < podCount; index += 1) {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        const x = startX + column * (podWidth + gapX);
+        const y = startY + row * (podHeight + gapY);
+        roundedRect(x, y, podWidth, podHeight, 3);
+        context.fillStyle = 'rgba(168, 214, 114, 0.1)';
+        context.fill();
+        context.strokeStyle = accent;
+        context.stroke();
+        context.fillStyle = accent;
+        context.beginPath();
+        context.arc(x + 5, y + podHeight / 2, 1.5, 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+
+    function drawMinioNode(node: InfraNode, size: { width: number; height: number }, accent: string) {
+      const mobile = width < 720;
+      const top = node.py - size.height / 2;
+      const left = node.px - size.width / 2;
+
+      context.strokeStyle = accent;
+      for (let index = 0; index < 3; index += 1) {
+        const boxX = left + 9 + index * 7;
+        const boxY = top + 9 + (index % 2) * 5;
+        context.strokeRect(boxX, boxY, 10, 10);
+      }
+      context.textAlign = 'left';
+      context.textBaseline = 'middle';
+      context.font = `${mobile ? 8 : 9}px "SFMono-Regular", Consolas, monospace`;
+      context.fillStyle = palette.text;
+      context.fillText(mobile ? 'MINIO' : 'MINIO CLUSTER', left + 38, top + 11);
+      context.font = `${mobile ? 7 : 8}px "SFMono-Regular", Consolas, monospace`;
+      context.fillStyle = palette.muted;
+      context.fillText(mobile ? 'S3 · 4 nodes' : 'S3 API · erasure coded', left + 38, top + 23);
+
+      const members = ['NODE-01', 'NODE-02', 'NODE-03', 'NODE-04'];
+      const columns = 2;
+      const memberGap = mobile ? 4 : 6;
+      const memberWidth = (size.width - 16 - memberGap) / columns;
+      const memberHeight = mobile ? 18 : 22;
+      const memberTop = top + (mobile ? 32 : 37);
+
+      for (let index = 0; index < members.length; index += 1) {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        const x = left + 8 + column * (memberWidth + memberGap);
+        const y = memberTop + row * (memberHeight + 5);
+        roundedRect(x, y, memberWidth, memberHeight, 3);
+        context.fillStyle = 'rgba(168, 214, 114, 0.08)';
+        context.fill();
+        context.strokeStyle = palette.border;
+        context.stroke();
+        context.fillStyle = accent;
+        context.beginPath();
+        context.arc(x + 6, y + 6, 1.5, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = palette.text;
+        context.textAlign = 'left';
+        context.font = `${mobile ? 6 : 7}px "SFMono-Regular", Consolas, monospace`;
+        context.fillText(members[index], x + 11, y + memberHeight / 2 + 1);
+      }
+    }
+
+    function drawNodes(time: number) {
+      const mobile = width < 720;
+
+      for (const node of nodes) {
+        if (!isNodeVisible(node)) continue;
+        const distance = Math.hypot(pointer.x - node.px, pointer.y - node.py);
+        const hoverTarget = distance < 100 ? 1 : 0;
+        node.active += (hoverTarget - node.active) * 0.08;
+
+        const x = node.px;
+        const y = node.py;
+        const pulse = (Math.sin(time * 0.002 + node.x * 8) + 1) / 2;
+        const size = nodeSize(node);
+        const accent = node.kind === 'security'
+          ? palette.security
+          : node.kind === 'runner' ||
+              node.kind === 'registry' ||
+              node.kind === 'container' ||
+              node.kind === 'git' ||
+              node.kind === 'linux'
+            ? palette.warm
+            : palette.green;
+
+        context.save();
+        context.globalAlpha = mobile ? 0.64 : 0.76 + node.active * 0.2;
+        context.shadowColor = accent;
+        context.shadowBlur = node.active * 18;
+        roundedRect(x - size.width / 2, y - size.height / 2, size.width, size.height, 5);
+        context.fillStyle = 'rgba(20, 23, 21, 0.92)';
+        context.fill();
+        context.strokeStyle = node.active > 0.05 ? accent : palette.border;
+        context.lineWidth = 1;
+        context.stroke();
+
+        if (node.kind === 'cluster') {
+          drawKubernetesNode(node, size, accent);
+        } else if (node.kind === 'storage') {
+          drawMinioNode(node, size, accent);
+        } else {
+          const iconX = x - size.width / 2 + (mobile ? 17 : 20);
+          drawIcon(node, iconX, y, accent);
+
+          context.shadowBlur = 0;
+          context.textAlign = 'left';
+          context.textBaseline = 'middle';
+          context.font = `${mobile ? 8 : 9}px "SFMono-Regular", Consolas, monospace`;
+          context.fillStyle = palette.text;
+          context.fillText(node.label, x - size.width / 2 + (mobile ? 32 : 39), y - 6);
+          context.font = `${mobile ? 7 : 8}px "SFMono-Regular", Consolas, monospace`;
+          context.fillStyle = palette.muted;
+          context.fillText(node.detail, x - size.width / 2 + (mobile ? 32 : 39), y + 8);
+        }
+
+        context.fillStyle = accent;
+        context.globalAlpha = 0.35 + pulse * 0.65;
+        context.beginPath();
+        context.arc(x + size.width / 2 - 8, y - size.height / 2 + 8, 2, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+      }
+    }
+
+    function drawVignette() {
+      context.save();
+      context.fillStyle = 'rgba(13, 15, 14, 0.28)';
+      const centerWidth = Math.min(780, width * 0.72);
+      context.fillRect((width - centerWidth) / 2, 0, centerWidth, height);
+      context.restore();
+    }
+
+    function draw(time: number, delta: number) {
+      context.clearRect(0, 0, width, height);
+      drawGrid();
+      drawRoutes();
+      drawPackets(delta);
+      drawNodes(time);
+      drawVignette();
+    }
+
+    function tick(time: number) {
+      if (!visible) return;
+      const delta = Math.min((time - lastTime) / 1000, 0.05);
+      lastTime = time;
+      draw(time, delta);
+      animationFrame = window.requestAnimationFrame(tick);
+    }
+
+    function burstFrom(x: number, y: number) {
+      let closest: InfraNode | undefined;
+      let closestDistance = 150;
+
+      for (const node of nodes) {
+        if (!isNodeVisible(node)) continue;
+        const distance = Math.hypot(x - node.px, y - node.py);
+        if (distance < closestDistance) {
+          closest = node;
+          closestDistance = distance;
+        }
+      }
+
+      if (!closest) return;
+      const outgoing = routes.filter((route) => route.from === closest!.id && isRouteVisible(route));
+      for (const route of outgoing) {
+        for (let index = 0; index < 3; index += 1) {
+          packets.push({
+            route,
+            progress: -index * 0.075,
+            speed: route.speed * 1.8,
+            size: 2.5,
+            burst: true,
+            direction: 1
+          });
+        }
+      }
+    }
+
+    function nodeAt(x: number, y: number) {
+      for (let index = nodes.length - 1; index >= 0; index -= 1) {
+        const node = nodes[index];
+        if (!isNodeVisible(node)) continue;
+        const size = nodeSize(node);
+        const halfWidth = size.width / 2 + 7;
+        const halfHeight = size.height / 2 + 7;
+        if (Math.abs(x - node.px) <= halfWidth && Math.abs(y - node.py) <= halfHeight) {
+          return node;
+        }
+      }
+    }
+
+    function clusterControlAt(x: number, y: number) {
+      const cluster = nodeById.get('k8s');
+      if (!cluster || !isNodeVisible(cluster)) return;
+      const controls = clusterControlCenters(cluster);
+      const hitRadius = 9;
+
+      if (Math.abs(x - controls.minus.x) <= hitRadius && Math.abs(y - controls.minus.y) <= hitRadius) {
+        return -1 as const;
+      }
+      if (Math.abs(x - controls.plus.x) <= hitRadius && Math.abs(y - controls.plus.y) <= hitRadius) {
+        return 1 as const;
+      }
+    }
+
+    function updatePodCount(change: -1 | 1) {
+      const nextCount = Math.max(1, Math.min(6, podCount + change));
+      if (nextCount === podCount) return;
+      podCount = nextCount;
+      try {
+        sessionStorage.setItem('nullamix:k8s-pods', String(podCount));
+      } catch {
+        // The in-memory control remains functional when storage is unavailable.
+      }
+      if (reduceMotion) draw(performance.now(), 0);
+    }
+
+    function isInteractiveTarget(target: EventTarget | null) {
+      return target instanceof HTMLElement &&
+        Boolean(target.closest('a, button, input, textarea, select, summary, pre, code'));
+    }
+
+    function onPointerMove(event: PointerEvent) {
+      pointer.x = event.clientX;
+      pointer.y = event.clientY;
+      pointer.dx += ((event.clientX / width) * 2 - 1 - pointer.dx) * 0.08;
+      pointer.dy += ((event.clientY / height) * 2 - 1 - pointer.dy) * 0.08;
+
+      if (dragState) {
+        event.preventDefault();
+        const size = nodeSize(dragState.node);
+        const horizontalMargin = size.width / 2 + 5;
+        const verticalMargin = size.height / 2 + 5;
+        dragState.node.px = Math.max(
+          horizontalMargin,
+          Math.min(width - horizontalMargin, event.clientX - dragState.offsetX)
+        );
+        dragState.node.py = Math.max(
+          verticalMargin,
+          Math.min(height - verticalMargin, event.clientY - dragState.offsetY)
+        );
+        dragState.node.userX = dragState.node.px / width;
+        dragState.node.userY = dragState.node.py / height;
+        dragState.moved ||= Math.hypot(
+          event.clientX - dragState.startX,
+          event.clientY - dragState.startY
+        ) > 3;
+        if (reduceMotion) draw(performance.now(), 0);
+        return;
+      }
+
+      const hoverNode = event.pointerType === 'mouse' && !isInteractiveTarget(event.target)
+        ? nodeAt(event.clientX, event.clientY)
+        : undefined;
+      const hoverControl = event.pointerType === 'mouse' && !isInteractiveTarget(event.target)
+        ? clusterControlAt(event.clientX, event.clientY)
+        : undefined;
+      document.documentElement.classList.toggle('infra-control-hover', Boolean(hoverControl));
+      document.documentElement.classList.toggle('infra-node-hover', Boolean(hoverNode && !hoverControl));
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (
+        event.pointerType !== 'mouse' ||
+        event.button !== 0 ||
+        isInteractiveTarget(event.target) ||
+        document.documentElement.classList.contains('show-intro')
+      ) return;
+
+      const clusterControl = clusterControlAt(event.clientX, event.clientY);
+      if (clusterControl) {
+        event.preventDefault();
+        updatePodCount(clusterControl);
+        return;
+      }
+
+      const node = nodeAt(event.clientX, event.clientY);
+      if (!node) {
+        burstFrom(event.clientX, event.clientY);
+        return;
+      }
+
+      event.preventDefault();
+      dragState = {
+        node,
+        offsetX: event.clientX - node.px,
+        offsetY: event.clientY - node.py,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false
+      };
+      node.active = 1;
+      document.documentElement.classList.remove('infra-node-hover', 'infra-control-hover');
+      document.documentElement.classList.add('infra-node-dragging');
+    }
+
+    function onPointerUp(event: PointerEvent) {
+      if (!dragState) return;
+      if (!dragState.moved && event.type === 'pointerup') {
+        burstFrom(dragState.node.px, dragState.node.py);
+      }
+      dragState = undefined;
+      document.documentElement.classList.remove('infra-node-dragging');
+
+      const hoverNode = event.pointerType === 'mouse'
+        ? nodeAt(event.clientX, event.clientY)
+        : undefined;
+      const hoverControl = event.pointerType === 'mouse'
+        ? clusterControlAt(event.clientX, event.clientY)
+        : undefined;
+      document.documentElement.classList.toggle('infra-control-hover', Boolean(hoverControl));
+      document.documentElement.classList.toggle('infra-node-hover', Boolean(hoverNode && !hoverControl));
+    }
+
+    function cancelDrag() {
+      dragState = undefined;
+      document.documentElement.classList.remove(
+        'infra-node-dragging',
+        'infra-node-hover',
+        'infra-control-hover'
+      );
+    }
+
+    function onPointerLeave() {
+      if (!dragState) {
+        document.documentElement.classList.remove('infra-node-hover', 'infra-control-hover');
+      }
+    }
+
+    function onVisibilityChange() {
+      visible = !document.hidden;
+      if (!visible) cancelDrag();
+      window.cancelAnimationFrame(animationFrame);
+      if (visible && !reduceMotion) {
+        lastTime = performance.now();
+        animationFrame = window.requestAnimationFrame(tick);
+      }
+    }
+
+    resize();
+    window.addEventListener('resize', resize, { passive: true });
+    window.addEventListener('pointermove', onPointerMove, { passive: false });
+    window.addEventListener('pointerdown', onPointerDown, { passive: false });
+    window.addEventListener('pointerup', onPointerUp, { passive: true });
+    window.addEventListener('pointercancel', onPointerUp, { passive: true });
+    window.addEventListener('blur', cancelDrag);
+    document.documentElement.addEventListener('pointerleave', onPointerLeave);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    if (!reduceMotion) {
+      animationFrame = window.requestAnimationFrame(tick);
+    }
+  }
+</script>

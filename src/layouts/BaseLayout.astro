@@ -9,6 +9,7 @@ interface Props {
 }
 
 import '../styles/global.css';
+import InfrastructureScene from '../components/InfrastructureScene.astro';
 
 const siteName = 'nullamix';
 const defaultDescription = 'DevOps notes from AmirHossein: Linux, containers, CI/CD, security, observability, and production engineering.';
@@ -65,29 +66,125 @@ const structuredData = type === 'article'
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
     {structuredData && <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />}
+    <script is:inline>
+      (() => {
+        const isHome = window.location.pathname === '/';
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let hasSeenIntro = false;
+
+        try {
+          hasSeenIntro = sessionStorage.getItem('nullamix:intro:v1') === 'seen';
+        } catch {
+          // Storage can be unavailable in privacy-restricted contexts.
+        }
+
+        if (isHome && !reducedMotion && !hasSeenIntro) {
+          document.documentElement.classList.add('show-intro');
+          try {
+            sessionStorage.setItem('nullamix:intro:v1', 'seen');
+          } catch {
+            // The intro can still run without persisting session state.
+          }
+        }
+      })();
+    </script>
     <title>{pageTitle}</title>
   </head>
   <body>
-    <a class="skip-link" href="#content">Skip to content</a>
-    <header class="site-header">
-      <nav class="nav" aria-label="Main navigation">
-        <a class="brand" href="/" aria-label="nullamix home">
-          <img src="/favicon.svg" width="28" height="28" alt="" />
-          <span>nullamix</span>
-        </a>
-        <div class="nav-links">
-          <a href="/blog/" aria-current={path.startsWith('/blog/') ? 'page' : undefined}>Notes</a>
-          <a href="/about/" aria-current={path === '/about/' ? 'page' : undefined}>About</a>
-          <a href="https://github.com/nullamix" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+    <InfrastructureScene />
+
+    {path === '/' && (
+      <div class="boot-screen" data-intro aria-hidden="true">
+        <div class="boot-inner">
+          <div class="boot-header">
+            <span>pipeline / nullamix</span>
+            <span class="boot-run">run #042</span>
+          </div>
+
+          <div class="pipeline" aria-hidden="true">
+            <div class="pipeline-track"><span></span></div>
+            <div class="pipeline-step pipeline-build">
+              <span class="pipeline-node">01</span>
+              <strong>build</strong>
+              <small>image</small>
+            </div>
+            <div class="pipeline-step pipeline-verify">
+              <span class="pipeline-node">02</span>
+              <strong>verify</strong>
+              <small>policy</small>
+            </div>
+            <div class="pipeline-step pipeline-ship">
+              <span class="pipeline-node">03</span>
+              <strong>ship</strong>
+              <small>notes</small>
+            </div>
+          </div>
+
+          <div class="boot-log">
+            <p class="boot-log-line line-one"><span>→</span> resolving infrastructure context</p>
+            <p class="boot-log-line line-two"><span>✓</span> checks passed</p>
+            <p class="boot-log-line line-three"><span>✓</span> deployment ready</p>
+          </div>
+
+          <div class="boot-footer">
+            <span class="boot-mark">N</span>
+            <span>infrastructure notes</span>
+            <button type="button" data-intro-skip tabindex="-1">skip</button>
+          </div>
         </div>
-      </nav>
-    </header>
-    <main id="content">
-      <slot />
-    </main>
-    <footer class="footer">
-      <p><span class="status-dot" aria-hidden="true"></span> status: documenting</p>
-      <p><a href="/rss.xml">RSS</a> · Field notes by AmirHossein.</p>
-    </footer>
+      </div>
+    )}
+
+    <div class="site-shell">
+      <a class="skip-link" href="#content">Skip to content</a>
+      <header class="site-header">
+        <nav class="nav" aria-label="Main navigation">
+          <a class="brand" href="/" aria-label="nullamix home">
+            <img src="/favicon.svg" width="28" height="28" alt="" />
+            <span>nullamix</span>
+          </a>
+          <div class="nav-links">
+            <a href="/blog/" aria-current={path.startsWith('/blog/') ? 'page' : undefined}>Notes</a>
+            <a href="/about/" aria-current={path === '/about/' ? 'page' : undefined}>About</a>
+            <a href="https://github.com/nullamix" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          </div>
+        </nav>
+      </header>
+      <main id="content">
+        <slot />
+      </main>
+      <footer class="footer">
+        <p><span class="status-dot" aria-hidden="true"></span> status: documenting</p>
+        <p><a href="/rss.xml">RSS</a> · Field notes by AmirHossein.</p>
+      </footer>
+    </div>
+
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const intro = document.querySelector('[data-intro]');
+
+        if (!intro || !root.classList.contains('show-intro')) return;
+
+        const skip = intro.querySelector('[data-intro-skip]');
+        let timeout;
+
+        const finish = () => {
+          window.clearTimeout(timeout);
+          root.classList.remove('show-intro');
+          root.classList.add('intro-complete');
+          window.removeEventListener('keydown', onKeydown);
+          window.setTimeout(() => intro.remove(), 500);
+        };
+
+        const onKeydown = (event) => {
+          if (event.key === 'Escape') finish();
+        };
+
+        skip?.addEventListener('click', finish, { once: true });
+        window.addEventListener('keydown', onKeydown);
+        timeout = window.setTimeout(finish, 3200);
+      })();
+    </script>
   </body>
 </html>
