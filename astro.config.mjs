@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://nullamix.github.io',
+  site: 'https://nullamix.ir',
   markdown: {
     shikiConfig: {
       theme: 'github-dark'
