@@ -16,6 +16,6 @@ export async function GET(context: { site?: URL }) {
       link: `/blog/${post.slug}/`,
       categories: post.data.tags
     })),
-    customData: '<language>en-us</language>'
+    customData: '<language>fa-IR</language>'
   });
 }

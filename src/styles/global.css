@@ -46,6 +46,23 @@ body {
   opacity: 0.82;
 }
 
+.notes-page {
+  --muted: #aeb4ac;
+}
+
+.notes-page .infrastructure-scene canvas {
+  opacity: 0.3;
+}
+
+.notes-page .site-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(7, 9, 8, 0.54);
+  pointer-events: none;
+}
+
 html.infra-node-hover,
 html.infra-node-hover body {
   cursor: grab;
@@ -679,6 +696,10 @@ h3 {
   font-size: 1rem;
 }
 
+.notes-page .prose {
+  color: #d7dad5;
+}
+
 .prose h2 {
   margin: 2.75rem 0 1rem;
   color: var(--text);
@@ -731,6 +752,27 @@ h3 {
   border-left: 2px solid var(--warm);
   padding-left: 1.25rem;
   color: var(--muted);
+}
+
+.article[dir="rtl"] {
+  text-align: right;
+}
+
+.article[dir="rtl"] .article-header h1 {
+  max-width: 22ch;
+}
+
+.article[dir="rtl"] .prose blockquote {
+  border-right: 2px solid var(--warm);
+  border-left: 0;
+  padding-right: 1.25rem;
+  padding-left: 0;
+}
+
+.article[dir="rtl"] .prose pre,
+.article[dir="rtl"] .prose code {
+  direction: ltr;
+  text-align: left;
 }
 
 .footer {

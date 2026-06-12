@@ -6,6 +6,7 @@ interface Props {
   type?: 'website' | 'article';
   publishedTime?: Date;
   updatedTime?: Date;
+  language?: 'en' | 'fa';
 }
 
 import '../styles/global.css';
@@ -19,11 +20,13 @@ const {
   canonicalPath = Astro.url.pathname,
   type = 'website',
   publishedTime,
-  updatedTime
+  updatedTime,
+  language = 'en'
 } = Astro.props;
 const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const canonical = new URL(canonicalPath, Astro.site ?? 'https://nullamix.github.io').toString();
 const path = Astro.url.pathname;
+const isNotesPage = path.startsWith('/blog/') || path.startsWith('/tags/');
 const structuredData = type === 'article'
   ? {
       '@context': 'https://schema.org',
@@ -32,6 +35,7 @@ const structuredData = type === 'article'
       description,
       datePublished: publishedTime?.toISOString(),
       dateModified: (updatedTime ?? publishedTime)?.toISOString(),
+      inLanguage: language,
       mainEntityOfPage: canonical,
       author: {
         '@type': 'Person',
@@ -46,7 +50,7 @@ const structuredData = type === 'article'
   : undefined;
 ---
 <!doctype html>
-<html lang="en">
+<html lang={language}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -90,7 +94,7 @@ const structuredData = type === 'article'
     </script>
     <title>{pageTitle}</title>
   </head>
-  <body>
+  <body class={isNotesPage ? 'notes-page' : undefined}>
     <InfrastructureScene />
 
     {path === '/' && (

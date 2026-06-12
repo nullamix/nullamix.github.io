@@ -11,6 +11,7 @@ const blog = defineCollection({
       .array(z.string().trim().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/))
       .max(8)
       .default([]),
+    language: z.enum(['en', 'fa']).default('en'),
     draft: z.boolean().default(false)
   })
 });
