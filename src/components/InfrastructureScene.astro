@@ -17,7 +17,9 @@
     | 'cluster'
     | 'cache'
     | 'search'
+    | 'database'
     | 'storage'
+    | 'secrets'
     | 'observe';
 
   interface InfraNode {
@@ -66,15 +68,18 @@
       { id: 'security', label: 'SEC GATE', detail: 'SAST · Trivy', kind: 'security', x: 0.49, y: 0.1, px: 0, py: 0, active: 0 },
       { id: 'registry', label: 'REGISTRY', detail: 'image · pkg', kind: 'registry', x: 0.65, y: 0.22, px: 0, py: 0, active: 0 },
       { id: 'docker', label: 'DOCKER DEV', detail: 'team deploy', kind: 'container', x: 0.82, y: 0.15, px: 0, py: 0, active: 0 },
+      { id: 'devdb', label: 'DEV DB', detail: 'PostgreSQL', kind: 'database', x: 0.94, y: 0.2, px: 0, py: 0, active: 0 },
       { id: 'internet', label: 'INTERNET', detail: 'users · APIs', kind: 'internet', x: 0.05, y: 0.58, px: 0, py: 0, active: 0 },
-      { id: 'nginx', label: 'NGINX', detail: 'L7 balance', kind: 'gateway', x: 0.2, y: 0.51, px: 0, py: 0, active: 0 },
+      { id: 'nginx', label: 'NGINX HA', detail: 'VIP · 2 nodes', kind: 'gateway', x: 0.2, y: 0.51, px: 0, py: 0, active: 0 },
       { id: 'edge1', label: 'EDGE-01', detail: 'proxy node', kind: 'edge', x: 0.35, y: 0.36, px: 0, py: 0, active: 0 },
       { id: 'edge2', label: 'EDGE-02', detail: 'proxy node', kind: 'edge', x: 0.35, y: 0.54, px: 0, py: 0, active: 0, desktopOnly: true },
       { id: 'edge3', label: 'EDGE-03', detail: 'proxy node', kind: 'edge', x: 0.35, y: 0.72, px: 0, py: 0, active: 0, desktopOnly: true },
       { id: 'mesh', label: 'SVC MESH', detail: 'mTLS · traffic', kind: 'mesh', x: 0.5, y: 0.53, px: 0, py: 0, active: 0 },
       { id: 'k8s', label: 'KUBERNETES', detail: 'production', kind: 'cluster', x: 0.65, y: 0.52, px: 0, py: 0, active: 0 },
-      { id: 'observe', label: 'MONITOR', detail: 'logs · metrics', kind: 'observe', x: 0.81, y: 0.34, px: 0, py: 0, active: 0 },
+      { id: 'vault', label: 'VAULT', detail: 'secrets · PKI', kind: 'secrets', x: 0.67, y: 0.34, px: 0, py: 0, active: 0 },
+      { id: 'observe', label: 'PROM/GRAF', detail: 'metrics · alert', kind: 'observe', x: 0.82, y: 0.34, px: 0, py: 0, active: 0 },
       { id: 'redis', label: 'REDIS', detail: 'cache', kind: 'cache', x: 0.78, y: 0.76, px: 0, py: 0, active: 0 },
+      { id: 'postgres', label: 'POSTGRES', detail: 'primary DB', kind: 'database', x: 0.83, y: 0.58, px: 0, py: 0, active: 0 },
       { id: 'elastic', label: 'ELASTIC', detail: 'search · logs', kind: 'search', x: 0.93, y: 0.56, px: 0, py: 0, active: 0 },
       { id: 'minio', label: 'MINIO', detail: 'object storage', kind: 'storage', x: 0.92, y: 0.82, px: 0, py: 0, active: 0 }
     ];
@@ -86,6 +91,11 @@
       { from: 'security', to: 'registry', color: 'warm', speed: 0.046, phase: 0.75 },
       { from: 'registry', to: 'docker', color: 'warm', speed: 0.048, phase: 0.35 },
       { from: 'registry', to: 'k8s', color: 'warm', speed: 0.04, phase: 0.8 },
+      { from: 'pipeline', to: 'vault', color: 'security', speed: 0.038, phase: 0.42, bidirectional: true },
+      { from: 'docker', to: 'vault', color: 'security', speed: 0.034, phase: 0.7, bidirectional: true },
+      { from: 'docker', to: 'devdb', color: 'warm', speed: 0.052, phase: 0.18, bidirectional: true },
+      { from: 'docker', to: 'elastic', color: 'warm', speed: 0.038, phase: 0.62 },
+      { from: 'docker', to: 'observe', color: 'warm', speed: 0.042, phase: 0.4 },
       { from: 'internet', to: 'nginx', color: 'green', speed: 0.075, phase: 0.2, bidirectional: true },
       { from: 'nginx', to: 'edge1', color: 'green', speed: 0.07, phase: 0.65, bidirectional: true },
       { from: 'nginx', to: 'edge2', color: 'green', speed: 0.068, phase: 0.28, bidirectional: true },
@@ -94,7 +104,9 @@
       { from: 'edge2', to: 'mesh', color: 'green', speed: 0.062, phase: 0.78, bidirectional: true },
       { from: 'edge3', to: 'mesh', color: 'green', speed: 0.06, phase: 0.2, bidirectional: true },
       { from: 'mesh', to: 'k8s', color: 'green', speed: 0.06, phase: 0.16, bidirectional: true },
+      { from: 'k8s', to: 'vault', color: 'security', speed: 0.042, phase: 0.58, bidirectional: true },
       { from: 'k8s', to: 'redis', color: 'green', speed: 0.07, phase: 0.05, bidirectional: true },
+      { from: 'k8s', to: 'postgres', color: 'green', speed: 0.05, phase: 0.22, bidirectional: true },
       { from: 'k8s', to: 'elastic', color: 'green', speed: 0.048, phase: 0.4, bidirectional: true },
       { from: 'k8s', to: 'minio', color: 'green', speed: 0.038, phase: 0.25, bidirectional: true },
       { from: 'k8s', to: 'observe', color: 'green', speed: 0.052, phase: 0.7 },
@@ -177,15 +189,18 @@
       security: [0.18, 0.32],
       registry: [0.54, 0.31],
       docker: [0.84, 0.31],
+      devdb: [0.84, 0.43],
       internet: [0.12, 0.51],
       nginx: [0.45, 0.51],
       edge1: [0.79, 0.49],
       mesh: [0.18, 0.71],
       k8s: [0.5, 0.71],
+      vault: [0.8, 0.69],
       observe: [0.12, 0.88],
-      redis: [0.2, 0.87],
-      elastic: [0.52, 0.84],
-      minio: [0.78, 0.95]
+      redis: [0.35, 0.88],
+      postgres: [0.62, 0.84],
+      elastic: [0.86, 0.83],
+      minio: [0.72, 0.96]
     };
 
     function isNodeVisible(node: InfraNode) {
@@ -206,6 +221,9 @@
       }
       if (node.kind === 'internet') {
         return { width: mobile ? 90 : 116, height: mobile ? 48 : 56 };
+      }
+      if (node.kind === 'gateway') {
+        return { width: mobile ? 94 : 124, height: mobile ? 50 : 58 };
       }
       return { width: mobile ? 82 : 106, height: mobile ? 43 : 48 };
     }
@@ -374,7 +392,7 @@
       context.fillStyle = color;
       context.lineWidth = 1.2;
 
-      if (node.kind === 'cache' || node.kind === 'search') {
+      if (node.kind === 'cache' || node.kind === 'search' || node.kind === 'database') {
         context.beginPath();
         context.ellipse(x, y - 5, 9, 3.5, 0, 0, Math.PI * 2);
         context.stroke();
@@ -401,13 +419,16 @@
           context.fill();
         }
       } else if (node.kind === 'gateway') {
-        context.strokeRect(x - 9, y - 7, 18, 14);
+        context.beginPath();
+        context.arc(x - 8, y, 3, 0, Math.PI * 2);
+        context.stroke();
+        context.strokeRect(x, y - 8, 10, 6);
+        context.strokeRect(x, y + 2, 10, 6);
         context.beginPath();
         context.moveTo(x - 5, y);
-        context.lineTo(x + 5, y);
-        context.moveTo(x + 2, y - 3);
-        context.lineTo(x + 5, y);
-        context.lineTo(x + 2, y + 3);
+        context.lineTo(x, y - 5);
+        context.moveTo(x - 5, y);
+        context.lineTo(x, y + 5);
         context.stroke();
       } else if (node.kind === 'edge') {
         for (let index = -1; index <= 1; index += 1) {
@@ -480,6 +501,16 @@
         context.moveTo(x - 3, y);
         context.lineTo(x - 1, y + 3);
         context.lineTo(x + 4, y - 3);
+        context.stroke();
+      } else if (node.kind === 'secrets') {
+        roundedRect(x - 9, y - 7, 18, 14, 3);
+        context.stroke();
+        context.beginPath();
+        context.arc(x - 2, y, 2.5, 0, Math.PI * 2);
+        context.moveTo(x + 0.5, y);
+        context.lineTo(x + 7, y);
+        context.moveTo(x + 5, y);
+        context.lineTo(x + 5, y + 3);
         context.stroke();
       } else if (node.kind === 'internet') {
         context.beginPath();
@@ -657,6 +688,8 @@
         const size = nodeSize(node);
         const accent = node.kind === 'security'
           ? palette.security
+          : node.kind === 'secrets'
+            ? palette.security
           : node.kind === 'runner' ||
               node.kind === 'registry' ||
               node.kind === 'container' ||
