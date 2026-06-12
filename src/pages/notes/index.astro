@@ -6,14 +6,12 @@ import { getCollection } from 'astro:content';
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
-<BaseLayout title="Blog" description="DevOps blog posts about Linux, containers, CI/CD, registry operations, security, and observability.">
+<BaseLayout title="Notes" description="Notes about Linux, containers, CI/CD, security, monitoring, and production systems.">
   <section class="article-header">
-    <span class="eyebrow">Blog</span>
-    <h1>Notes on infrastructure work.</h1>
-    <p class="lead">Practical posts about things that fail, leak, timeout, misroute, or silently become technical debt.</p>
+    <h1>Notes</h1>
   </section>
 
-  <section class="post-list" aria-label="Blog posts">
+  <section class="post-list" aria-label="Notes">
     {posts.map((post) => <PostCard post={post} />)}
   </section>
 </BaseLayout>

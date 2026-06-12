@@ -8,20 +8,19 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .slice(0, 3);
 ---
 <BaseLayout
-  title="DevOps notes by AmirHossein"
-  description="Practical DevOps writing by AmirHossein: Linux, containers, CI/CD, security, monitoring, and production engineering."
+  title="DevOps notes"
+  description="Notes by AmirHossein about Linux, containers, CI/CD, security, monitoring, and production engineering."
 >
   <section class="hero">
     <p class="command" aria-label="Terminal command">
-      <span>amir@nullamix</span>:~$ cat ./field-notes
+      <span>amir@nullamix</span>:~$ cat ./notes
     </p>
-    <h1>Infrastructure notes from the sharp edges.</h1>
+    <h1>DevOps notes.</h1>
     <p class="lead">
-      Practical writing on Linux, containers, delivery pipelines, observability, and the
-      trade-offs that show up in production.
+      Linux, containers, CI/CD, security, monitoring, and production systems.
     </p>
     <div class="actions">
-      <a href="/blog/">Browse all notes <span aria-hidden="true">→</span></a>
+      <a href="/notes/">Notes <span aria-hidden="true">→</span></a>
       <a href="https://github.com/nullamix" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
     </div>
   </section>
@@ -51,7 +50,7 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     <div class="section-heading">
       <span class="section-index">02</span>
       <h2 id="latest-title">Latest notes</h2>
-      <a class="section-link" href="/blog/">View archive <span aria-hidden="true">→</span></a>
+      <a class="section-link" href="/notes/">View archive <span aria-hidden="true">→</span></a>
     </div>
     <div class="post-list">
       {posts.map((post) => <PostCard post={post} />)}

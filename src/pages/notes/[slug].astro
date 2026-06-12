@@ -22,7 +22,7 @@ const published = post.data.pubDate.toLocaleDateString(locale, {
 <BaseLayout
   title={post.data.title}
   description={post.data.description}
-  canonicalPath={`/blog/${post.slug}/`}
+  canonicalPath={`/notes/${post.slug}/`}
   type="article"
   publishedTime={post.data.pubDate}
   updatedTime={post.data.updatedDate}
