@@ -1,54 +1,42 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
+import ProjectCard from '../components/ProjectCard.astro';
 import { getCollection } from 'astro:content';
+import { projects } from '../data/projects';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
   .slice(0, 3);
 ---
 <BaseLayout
-  title="DevOps notes"
-  description="Notes by AmirHossein about Linux, containers, CI/CD, security, monitoring, and production engineering."
+  title="notes"
+  description="Notes by AmirHossein (nullamix) about ..."
 >
   <section class="hero">
     <p class="command" aria-label="Terminal command">
       <span>amir@nullamix</span>:~$ cat ./notes
     </p>
-    <h1>DevOps notes.</h1>
-    <p class="lead">
-      Linux, containers, CI/CD, security, monitoring, and production systems.
-    </p>
+    <h1>DevOps notes</h1>
+    <p class="lead">Or maybe just notes.</p>
     <div class="actions">
       <a href="/notes/">Notes <span aria-hidden="true">→</span></a>
       <a href="https://github.com/nullamix" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
     </div>
   </section>
 
-  <section class="section scope" aria-labelledby="scope-title">
+  <section class="section" aria-labelledby="projects-title">
     <div class="section-heading">
-      <span class="section-index">01</span>
-      <h2 id="scope-title">Working set</h2>
+      <h2 id="projects-title">Projects</h2>
+      <a class="section-link" href="/projects/">View all <span aria-hidden="true">→</span></a>
     </div>
-    <dl class="scope-list">
-      <div>
-        <dt>delivery</dt>
-        <dd>CI/CD, automation, release design</dd>
-      </div>
-      <div>
-        <dt>runtime</dt>
-        <dd>Linux, containers, networking</dd>
-      </div>
-      <div>
-        <dt>reliability</dt>
-        <dd>Observability, incidents, security</dd>
-      </div>
-    </dl>
+    <div class="project-list">
+      {projects.slice(0, 2).map((project) => <ProjectCard project={project} />)}
+    </div>
   </section>
 
   <section class="section" aria-labelledby="latest-title">
     <div class="section-heading">
-      <span class="section-index">02</span>
       <h2 id="latest-title">Latest notes</h2>
       <a class="section-link" href="/notes/">View archive <span aria-hidden="true">→</span></a>
     </div>

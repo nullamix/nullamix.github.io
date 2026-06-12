@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+import { projects } from '../../data/projects';
+---
+<BaseLayout
+  title="Projects"
+  description="Tools and experiments built by nullamix around infrastructure, security, and developer workflows."
+>
+  <section class="article-header">
+    <h1>Projects</h1>
+  </section>
+
+  <section class="project-list" aria-label="Projects">
+    {projects.map((project) => <ProjectCard project={project} />)}
+  </section>
+</BaseLayout>

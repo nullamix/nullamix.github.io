@@ -26,7 +26,10 @@ const {
 const pageTitle = title === siteName ? siteName : `${title} · ${siteName}`;
 const canonical = new URL(canonicalPath, Astro.site ?? 'https://nullamix.github.io').toString();
 const path = Astro.url.pathname;
-const isNotesPage = path.startsWith('/notes/') || path.startsWith('/tags/');
+const isContentPage =
+  path.startsWith('/notes/') ||
+  path.startsWith('/tags/') ||
+  path.startsWith('/projects/');
 const structuredData = type === 'article'
   ? {
       '@context': 'https://schema.org',
@@ -94,7 +97,7 @@ const structuredData = type === 'article'
     </script>
     <title>{pageTitle}</title>
   </head>
-  <body class={isNotesPage ? 'notes-page' : undefined}>
+  <body class={isContentPage ? 'content-page' : undefined}>
     <InfrastructureScene />
 
     {path === '/' && (
@@ -149,6 +152,7 @@ const structuredData = type === 'article'
           </a>
           <div class="nav-links">
             <a href="/notes/" aria-current={path.startsWith('/notes/') ? 'page' : undefined}>Notes</a>
+            <a href="/projects/" aria-current={path.startsWith('/projects/') ? 'page' : undefined}>Projects</a>
             <a href="https://t.me/FUNCtastic" rel="me noreferrer">Telegram <span aria-hidden="true">↗</span></a>
             <a href="https://github.com/nullamix" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
           </div>
