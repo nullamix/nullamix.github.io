@@ -52,6 +52,7 @@
     speed: number;
     size: number;
     burst: boolean;
+    loadBearing: boolean;
     direction: 1 | -1;
   }
 
@@ -122,6 +123,7 @@
         speed: route.speed,
         size: index % 3 === 0 ? 2.5 : 2,
         burst: false,
+        loadBearing: false,
         direction: 1
       };
 
@@ -135,13 +137,22 @@
           speed: route.speed * 0.84,
           size: 2,
           burst: false,
+          loadBearing: false,
           direction: -1
         }
       ];
     });
 
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
-    const pointer = { x: -1000, y: -1000, dx: 0, dy: 0 };
+    const pointer = {
+      x: -1000,
+      y: -1000,
+      dx: 0,
+      dy: 0,
+      lastX: -1000,
+      lastY: -1000,
+      lastMoveTime: performance.now()
+    };
     let dragState: {
       node: InfraNode;
       offsetX: number;
@@ -158,6 +169,13 @@
     let lastTime = performance.now();
     let visible = !document.hidden;
     let podCount = 3;
+    let pointerDemand = 0;
+    let pointerLoad = 0;
+    let pointerEmission = 0;
+    let clickLoad = 0;
+    let kubernetesLoad = 0;
+    let lastScaleTime = 0;
+    let manualScaleUntil = 0;
 
     try {
       const storedPodCount = Number(sessionStorage.getItem('nullamix:k8s-pods'));
@@ -333,11 +351,13 @@
         const packet = packets[index];
         if (!isRouteVisible(packet.route)) continue;
         if (!reduceMotion) {
-          packet.progress += packet.speed * delta * packet.direction;
+          const speedMultiplier = 1 + pointerLoad * 0.22 + clickLoad * 1.25;
+          packet.progress += packet.speed * delta * packet.direction * speedMultiplier;
         }
 
         if (packet.progress > 1) {
           if (packet.burst) {
+            registerKubernetesArrival(packet);
             packets.splice(index, 1);
             continue;
           }
@@ -346,6 +366,7 @@
 
         if (packet.progress < 0) {
           if (packet.burst) {
+            registerKubernetesArrival(packet);
             packets.splice(index, 1);
             continue;
           }
@@ -384,6 +405,18 @@
       }
 
       context.restore();
+    }
+
+    function registerKubernetesArrival(packet: Packet) {
+      if (!packet.loadBearing) return;
+
+      const arrivedAtKubernetes =
+        (packet.direction === 1 && packet.route.to === 'k8s') ||
+        (packet.direction === -1 && packet.route.from === 'k8s');
+
+      if (arrivedAtKubernetes) {
+        kubernetesLoad = Math.min(5, kubernetesLoad + 0.32);
+      }
     }
 
     function drawIcon(node: InfraNode, x: number, y: number, color: string) {
@@ -579,7 +612,8 @@
       context.fillText(mobile ? 'K8S' : node.label, left + 34, top + 12);
       context.font = `${mobile ? 7 : 8}px "SFMono-Regular", Consolas, monospace`;
       context.fillStyle = palette.muted;
-      context.fillText(`PROD · ${podCount} pods`, left + 34, top + 24);
+      const loadPercent = Math.round(Math.min(1, kubernetesLoad / 4) * 100);
+      context.fillText(`AUTO ${loadPercent}% · ${podCount} pods`, left + 34, top + 24);
 
       context.strokeStyle = palette.border;
       context.beginPath();
@@ -754,10 +788,60 @@
       drawVignette();
     }
 
+    function emitPointerPacket() {
+      const visibleRoutes = routes.filter(isRouteVisible);
+      if (visibleRoutes.length === 0) return;
+
+      const route = visibleRoutes[Math.floor(Math.random() * visibleRoutes.length)];
+      const direction: 1 | -1 = route.bidirectional && Math.random() < 0.28
+        ? -1
+        : 1;
+
+      packets.push({
+        route,
+        progress: direction === 1 ? 0 : 1,
+        speed: route.speed * (1.05 + pointerLoad * 0.15),
+        size: 2.1,
+        burst: true,
+        loadBearing: false,
+        direction
+      });
+    }
+
+    function updateTraffic(time: number, delta: number) {
+      pointerDemand *= Math.exp(-delta * 4.2);
+      pointerLoad += (pointerDemand - pointerLoad) * Math.min(1, delta * 8);
+      clickLoad *= Math.exp(-delta * 1.35);
+      kubernetesLoad *= Math.exp(-delta * 0.7);
+
+      pointerEmission += delta * pointerLoad * 4;
+      let emitted = 0;
+      while (pointerEmission >= 1 && emitted < 2) {
+        const burstCount = packets.reduce((count, packet) => count + Number(packet.burst), 0);
+        if (burstCount >= 90) {
+          pointerEmission = 0;
+          break;
+        }
+        emitPointerPacket();
+        pointerEmission -= 1;
+        emitted += 1;
+      }
+
+      if (time < manualScaleUntil) return;
+
+      const desiredPods = Math.max(1, Math.min(6, Math.ceil(kubernetesLoad / 0.75)));
+      const scaleDelay = desiredPods > podCount ? 550 : 2200;
+      if (desiredPods !== podCount && time - lastScaleTime >= scaleDelay) {
+        setPodCount(podCount + Math.sign(desiredPods - podCount), false);
+        lastScaleTime = time;
+      }
+    }
+
     function tick(time: number) {
       if (!visible) return;
       const delta = Math.min((time - lastTime) / 1000, 0.05);
       lastTime = time;
+      updateTraffic(time, delta);
       draw(time, delta);
       animationFrame = window.requestAnimationFrame(tick);
     }
@@ -776,6 +860,7 @@
       }
 
       if (!closest) return;
+      clickLoad = Math.min(1, clickLoad + 0.7);
       const outgoing = routes.filter((route) => route.from === closest!.id && isRouteVisible(route));
       for (const route of outgoing) {
         for (let index = 0; index < 3; index += 1) {
@@ -785,6 +870,7 @@
             speed: route.speed * 1.8,
             size: 2.5,
             burst: true,
+            loadBearing: true,
             direction: 1
           });
         }
@@ -818,16 +904,23 @@
       }
     }
 
-    function updatePodCount(change: -1 | 1) {
-      const nextCount = Math.max(1, Math.min(6, podCount + change));
+    function setPodCount(nextCount: number, persist: boolean) {
+      nextCount = Math.max(1, Math.min(6, nextCount));
       if (nextCount === podCount) return;
       podCount = nextCount;
-      try {
-        sessionStorage.setItem('nullamix:k8s-pods', String(podCount));
-      } catch {
-        // The in-memory control remains functional when storage is unavailable.
+      if (persist) {
+        try {
+          sessionStorage.setItem('nullamix:k8s-pods', String(podCount));
+        } catch {
+          // The in-memory control remains functional when storage is unavailable.
+        }
       }
       if (reduceMotion) draw(performance.now(), 0);
+    }
+
+    function updatePodCount(change: -1 | 1) {
+      setPodCount(podCount + change, true);
+      manualScaleUntil = performance.now() + 6000;
     }
 
     function isInteractiveTarget(target: EventTarget | null) {
@@ -836,6 +929,20 @@
     }
 
     function onPointerMove(event: PointerEvent) {
+      const now = performance.now();
+      const elapsed = Math.max(16, now - pointer.lastMoveTime);
+      if (pointer.lastX > -500 && event.pointerType === 'mouse') {
+        const distance = Math.hypot(
+          event.clientX - pointer.lastX,
+          event.clientY - pointer.lastY
+        );
+        const pixelsPerSecond = distance / elapsed * 1000;
+        const movementLoad = Math.max(0, Math.min(1, (pixelsPerSecond - 80) / 1500));
+        pointerDemand = Math.max(pointerDemand, movementLoad);
+      }
+      pointer.lastX = event.clientX;
+      pointer.lastY = event.clientY;
+      pointer.lastMoveTime = now;
       pointer.x = event.clientX;
       pointer.y = event.clientY;
       pointer.dx += ((event.clientX / width) * 2 - 1 - pointer.dx) * 0.08;
