@@ -1,4 +1,6 @@
 ---
+import { formatPostDate } from '../utils/formatPostDate';
+
 interface Props {
   post: {
     slug: string;
@@ -14,15 +16,15 @@ interface Props {
 
 const { post } = Astro.props;
 const locale = post.data.language === 'fa' ? 'fa-IR' : 'en';
-const date = post.data.pubDate.toLocaleDateString(locale, {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric'
-});
+const date = formatPostDate(post.data.pubDate, locale, 'short');
 ---
 <article class="post-card">
   <div class="post-meta">
-    <time datetime={post.data.pubDate.toISOString()}>{date}</time>
+    <time
+      datetime=date
+      lang={post.data.language}
+      dir={post.data.language === 'fa' ? 'rtl' : 'ltr'}
+    >{date}</time>
     <span class="tags" aria-label="Tags">
       {post.data.tags.map((tag) => <span class="tag">#{tag}</span>)}
     </span>
