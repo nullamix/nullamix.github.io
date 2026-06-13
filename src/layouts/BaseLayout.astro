@@ -101,6 +101,18 @@ const structuredData = type === 'article'
     <InfrastructureScene />
 
     {path === '/' && (
+      <button
+        class="scene-focus-toggle"
+        type="button"
+        aria-pressed="false"
+        data-scene-focus-toggle
+      >
+        <span class="scene-focus-indicator" aria-hidden="true"></span>
+        <span data-scene-focus-label>animation only</span>
+      </button>
+    )}
+
+    {path === '/' && (
       <div class="boot-screen" data-intro aria-hidden="true">
         <div class="boot-inner">
           <div class="boot-header">
@@ -192,6 +204,32 @@ const structuredData = type === 'article'
         skip?.addEventListener('click', finish, { once: true });
         window.addEventListener('keydown', onKeydown);
         timeout = window.setTimeout(finish, 3200);
+      })();
+    </script>
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const toggle = document.querySelector('[data-scene-focus-toggle]');
+        const label = toggle?.querySelector('[data-scene-focus-label]');
+
+        if (!(toggle instanceof HTMLButtonElement) || !label) return;
+
+        const setFocusMode = (enabled) => {
+          root.classList.toggle('scene-focus', enabled);
+          toggle.setAttribute('aria-pressed', String(enabled));
+          label.textContent = enabled ? 'Show content' : 'Topology only';
+        };
+
+        toggle.addEventListener('click', () => {
+          setFocusMode(!root.classList.contains('scene-focus'));
+        });
+
+        window.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && root.classList.contains('scene-focus')) {
+            setFocusMode(false);
+            toggle.focus();
+          }
+        });
       })();
     </script>
   </body>

@@ -44,6 +44,9 @@ body {
   width: 100%;
   height: 100%;
   opacity: 0.82;
+  transition:
+    opacity 360ms ease,
+    filter 360ms ease;
 }
 
 .content-page {
@@ -95,6 +98,105 @@ html.show-intro body {
   position: relative;
   z-index: 1;
   min-height: 100vh;
+  transition:
+    opacity 320ms ease,
+    filter 320ms ease,
+    visibility 0s linear;
+}
+
+.scene-focus-toggle {
+  position: fixed;
+  right: max(1.25rem, env(safe-area-inset-right));
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  z-index: 30;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(13, 15, 14, 0.9);
+  color: var(--muted);
+  padding: 0.55rem 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition:
+    border-color 160ms ease,
+    color 160ms ease,
+    background 160ms ease,
+    opacity 200ms ease;
+}
+
+.scene-focus-toggle:hover,
+.scene-focus-toggle:focus-visible,
+.scene-focus-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.scene-focus-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.scene-focus-indicator {
+  width: 18px;
+  height: 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  position: relative;
+}
+
+.scene-focus-indicator::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  transition:
+    left 180ms ease,
+    background 180ms ease;
+}
+
+.scene-focus-toggle[aria-pressed="true"] .scene-focus-indicator::after {
+  left: 10px;
+  background: var(--accent);
+}
+
+html.scene-focus,
+html.scene-focus body {
+  overflow: hidden;
+}
+
+html.scene-focus .site-shell {
+  visibility: hidden;
+  opacity: 0;
+  filter: blur(5px);
+  pointer-events: none;
+  transition:
+    opacity 320ms ease,
+    filter 320ms ease,
+    visibility 0s linear 320ms;
+}
+
+html.scene-focus .infrastructure-scene canvas {
+  opacity: 1;
+  filter: brightness(1.28) saturate(1.16) contrast(1.08);
+}
+
+html.scene-focus .scene-focus-toggle {
+  border-color: var(--accent);
+  background: rgba(13, 15, 14, 0.76);
+}
+
+html.show-intro .scene-focus-toggle {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .boot-screen {
@@ -841,6 +943,11 @@ h3 {
     opacity: 0.58;
   }
 
+  .scene-focus-toggle {
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
   .boot-inner {
     width: min(100% - 2rem, 720px);
   }
@@ -952,12 +1059,17 @@ h3 {
     opacity: 0.5;
   }
 
+  html.scene-focus .infrastructure-scene canvas {
+    opacity: 1;
+  }
+
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
