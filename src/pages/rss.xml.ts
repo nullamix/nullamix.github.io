@@ -7,8 +7,8 @@ export async function GET(context: { site?: URL }) {
 
   return rss({
     title: 'nullamix',
-    description: 'Practical DevOps notes on Linux, containers, CI/CD, security, and observability.',
-    site: context.site ?? new URL('https://nullamix.github.io'),
+    description: 'Practical DevOps and Docker notes by nullamix on Linux, containers, CI/CD, security, and observability.',
+    site: context.site ?? new URL('https://nullamix.ir'),
     items: posts.map((post) => ({
       title: post.data.title,
       description: post.data.description,

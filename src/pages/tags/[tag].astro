@@ -20,7 +20,12 @@ export async function getStaticPaths() {
 
 const { tag, posts } = Astro.props;
 ---
-<BaseLayout title={`Tag: ${tag}`} description={`Posts tagged ${tag} on nullamix.`} canonicalPath={`/tags/${tag}/`}>
+<BaseLayout
+  title={`Tag: ${tag}`}
+  description={`Posts tagged ${tag} on nullamix notes.`}
+  canonicalPath={`/tags/${tag}/`}
+  keywords={['nullamix', tag, 'devops', 'docker', 'linux', 'security', 'infrastructure']}
+>
   <section class="article-header">
     <span class="eyebrow">Tag</span>
     <h1>{tag}</h1>

@@ -24,6 +24,7 @@ const published = formatPostDate(post.data.pubDate, locale, 'long');
   publishedTime={post.data.pubDate}
   updatedTime={post.data.updatedDate}
   language={post.data.language}
+  keywords={['nullamix', post.data.title, ...post.data.tags]}
 >
   <article
     class="article"

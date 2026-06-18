@@ -10,8 +10,10 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .slice(0, 3);
 ---
 <BaseLayout
-  title="notes"
+  title="nullamix"
   description="Notes by AmirHossein (nullamix) about ..."
+  keywords={['nullamix', 'devops', 'دواپس', 'docker', 'داکر', 'linux', 'container', 'ci/cd', 'security', 'observability']}
+  language="fa"
 >
   <section class="hero">
     <p class="command" aria-label="Terminal command">

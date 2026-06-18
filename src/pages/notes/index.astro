@@ -6,9 +6,19 @@ import { getCollection } from 'astro:content';
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
-<BaseLayout title="Notes" description="Notes about Linux, containers, CI/CD, security, monitoring, and production systems.">
+<BaseLayout
+  title="Notes"
+  description="Archive notes and articles"
+  canonicalPath="/notes/"
+  keywords={['nullamix', 'devops notes', 'دواپس', 'docker', 'داکر', 'linux', 'containers', 'ci/cd', 'production systems']}
+  language="fa"
+>
   <section class="article-header">
+    <span class="eyebrow">DevOps / Docker / Linux</span>
     <h1>Notes</h1>
+    <p class="lead">
+      Archive notes and articles
+    </p>
   </section>
 
   <section class="post-list" aria-label="Notes">
