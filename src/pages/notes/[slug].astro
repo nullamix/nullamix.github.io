@@ -6,7 +6,7 @@ import { getCollection, render } from 'astro:content';
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft);
   return posts.map((post) => ({
-    params: { slug: post.slug },
+    params: { slug: post.id },
     props: { post }
   }));
 }
@@ -19,7 +19,7 @@ const published = formatPostDate(post.data.pubDate, locale, 'long');
 <BaseLayout
   title={post.data.title}
   description={post.data.description}
-  canonicalPath={`/notes/${post.slug}/`}
+  canonicalPath={`/notes/${post.id}/`}
   type="article"
   publishedTime={post.data.pubDate}
   updatedTime={post.data.updatedDate}

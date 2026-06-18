@@ -3,7 +3,7 @@ import { formatPostDate } from '../utils/formatPostDate';
 
 interface Props {
   post: {
-    slug: string;
+    id: string;
     data: {
       title: string;
       description: string;
@@ -21,7 +21,7 @@ const date = formatPostDate(post.data.pubDate, locale, 'short');
 <article class="post-card">
   <div class="post-meta">
     <time
-      datetime=date
+      datetime={post.data.pubDate.toISOString()}
       lang={post.data.language}
       dir={post.data.language === 'fa' ? 'rtl' : 'ltr'}
     >{date}</time>
@@ -30,7 +30,7 @@ const date = formatPostDate(post.data.pubDate, locale, 'short');
     </span>
   </div>
   <div class="post-summary" lang={post.data.language} dir="auto">
-    <h3><a href={`/notes/${post.slug}/`}>{post.data.title}</a></h3>
+    <h3><a href={`/notes/${post.id}/`}>{post.data.title}</a></h3>
     <p>{post.data.description}</p>
   </div>
   <span class="post-arrow" aria-hidden="true">→</span>
